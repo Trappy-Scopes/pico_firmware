@@ -46,9 +46,9 @@ class Wifi:
                 time.sleep(0.5)
 
             status = self.wlan.ifconfig()
-            print( 'Connected to ' + ssid + '. ' + 'Device IP: ' + status[0])
+            print( 'Connected to ' + secrets.SSID + '. ' + 'Device IP: ' + status[0])
 
-            self.time_on_connected = time.time.now()
+            self.time_on_connected = time.time()
             self.ip = status[0]
             self.status = status
 
@@ -57,7 +57,7 @@ class Wifi:
         """
         Disconnect from the current network
         """
-        wlan.active(False)
+        self.wlan.active(False)
         print("Wifi is disconnected!")
 
     #4

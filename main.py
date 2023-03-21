@@ -1,6 +1,8 @@
 from lights import Lights
 from temphumidity import get_temp_humidy
 import utime
+import secrets
+from wifi import Wifi
 
 # Pins
 d1_redPIN = 16
@@ -11,6 +13,7 @@ d2_redPIN = 22
 d2_greenPIN = 27
 d2_bluePIN = 28
 
+wifi = Wifi(secrets)
 print(get_temp_humidy())
 l1 = Lights(d1_redPIN, d1_greenPIN, d1_bluePIN)
 l2 = Lights(d2_redPIN, d2_greenPIN, d2_bluePIN)
