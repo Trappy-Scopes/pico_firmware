@@ -3,8 +3,11 @@ import network
 from machine import Pin
 import secrets
 
-
-
+# TODO
+#1. Understand sockets
+#2. Create basic browse functionality
+#3. Serve webpage functionality
+s
 class Wifi:
 
     #1
