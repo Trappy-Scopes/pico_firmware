@@ -3,6 +3,7 @@ from temphumidity import get_temp_humidy
 import utime
 import secrets
 from wifi import Wifi
+from handshake import handshake
 
 # Pins
 d1_redPIN = 16
