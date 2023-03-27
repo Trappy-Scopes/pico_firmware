@@ -1,8 +1,8 @@
 import dht
 import machine
 import utime
+from pins import *
 
-TEMP_HUM_PIN = 14
 def get_temp_humidy():
     d = dht.DHT11(machine.Pin(TEMP_HUM_PIN))
     d.measure()
