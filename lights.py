@@ -20,7 +20,7 @@ class Lights:
         self.turn_on('g')
         self.turn_on('b')
         
-        self.sweep_ch()
+        #self.sweep_ch()
         self.setVs(0,0,0)
 
     def turn_off(self, channel):

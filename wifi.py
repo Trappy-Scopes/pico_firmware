@@ -7,7 +7,18 @@ import secrets
 #1. Understand sockets
 #2. Create basic browse functionality
 #3. Serve webpage functionality
-s
+
+
+######### NOTES #########
+## Return value of cyw43_wifi_link_status
+#define CYW43_LINK_DOWN (0)
+#define CYW43_LINK_JOIN (1)
+#define CYW43_LINK_NOIP (2)
+#define CYW43_LINK_UP (3)
+#define CYW43_LINK_FAIL (-1)
+#define CYW43_LINK_NONET (-2)
+#define CYW43_LINK_BADAUTH (-3)
+
 class Wifi:
 
     #1
@@ -17,9 +28,16 @@ class Wifi:
         """
         self.wlan = network.WLAN(network.STA_IF)
         self.wlan.active(True)
+        
+        # Device Info
+        self.mac = ubinascii.hexlify(self.WLAN().config('mac'),':').decode()
 
         if secrets != None:
             self.connect(secrets)
+            
+    def status(self):
+        mac = ubinascii.hexlify(self.WLAN().config('mac'),':').decode()
+        print(mac)
 
     #2   
     def connect(self, secrets):
