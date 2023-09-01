@@ -4,12 +4,22 @@ from machine import Pin
 import secrets
 import ubinascii
 import urequests
+import gc
 
 # TODO
 #1. Understand sockets
 #2. Create basic browse functionality
 #3. Serve webpage functionality
 
+
+"""
+Format for secrets for wifi:
+
+wifi = [{dict of credentials1}, {dict of credentials2},
+                          ..., {dict of credentialsn}]
+
+{dict of credentials} == {SSID:<ssid>, PASSWORD:<password>}
+"""
 
 ######### NOTES #########
 ## Return value of cyw43_wifi_link_status
@@ -34,86 +44,56 @@ class Wifi:
         
         # Device Info
         self.mac = ubinascii.hexlify(self.wlan.config('mac'),':').decode()
-
+        self.time_on_connected = None
+        self.ip = None
+        self.ssid = None
+        
+        # Connect if secrets are passed.
         if secrets != None:
             self.connect(secrets)
+
+
+        # Sockets
+        self.ssocket = None # Server socket
+        self.std_response = "ACK" # Standard response of the sever on a request.
             
-    def info(self):
-        #self.mac = ubinascii.hexlify(self.wlan.config('mac'),':').decode()
-        #return f"mac: {mac} ip: {self.ip}"
-        return None
 
     #2   
     def connect(self, secrets):
-        self.wlan.connect(secrets.SSID, secrets.SSID_PASSWORD)
 
-        # Wait for connect or fail
-        max_wait = 10
-        while max_wait > 0:
-            if self.wlan.status() < 0 or self.wlan.status() >= 3:
-                break
-            max_wait -= 1
-            print('waiting for connection...')
-            time.sleep(1)
-
-        # Handle connection error
-        if self.wlan.status() != 3:
-            print('Wifinetwork connection failed!')
-            self.connected = False
-        else:
-            s = 3
-            led = Pin("LED", Pin.OUT)
-            while s > 0:
-                s -= 1
-
-                led.value(1)
-                time.sleep(0.5)
-                led.value(0)
-                time.sleep(0.5)
-
-            status = self.wlan.ifconfig()
+        for credentials in secrets:
+            self.wlan.connect(credentials["SSID"], credentials.["PASSWORD"])
+            print("Wifi: Attempting to connect to: %s"%credentials["SSID"])
             
-
-            self.time_on_connected = time.time()
-            self.ip = status[0]
-            self.status = status
-            self.connected = True
-            return str( 'Connected to ' + secrets.SSID + '. ' + 'Device IP: ' + status[0])
-            
-        if not self.connected:
-            self.wlan.connect(secrets.SSID1, secrets.SSID1_PASSWORD)
-
             # Wait for connect or fail
             max_wait = 10
             while max_wait > 0:
                 if self.wlan.status() < 0 or self.wlan.status() >= 3:
                     break
                 max_wait -= 1
-                print('waiting for connection...')
+                print('Wifi: waiting for connection...')
                 time.sleep(1)
 
-            # Handle connection error
+            # Handle Connection Status
             if self.wlan.status() != 3:
-                print('Wifinetwork connection failed!')
                 self.connected = False
+                print('Wifi: Wifi network connection failed!')
+                print(f"Wifi: {self.wlan.status()}")
             else:
-                s = 3
-                led = Pin("LED", Pin.OUT)
-                while s > 0:
-                    s -= 1
-
-                    led.value(1)
-                    time.sleep(0.5)
-                    led.value(0)
-                    time.sleep(0.5)
-
-                status = self.wlan.ifconfig()
-
-                self.time_on_connected = time.time()
-                self.ip = status[0]
-                self.status = status
                 self.connected = True
-                return str( 'Connected to ' + secrets.SSID1 + '. ' + 'Device IP: ' + status[0])
+                led = Pin("LED", Pin.OUT)
+                for _ in range(6):
+                    led.toggle()
+                    time.sleep(0.5)
+
+                self.ssid = credentials.SSID
+                self.status = self.wlan.ifconfig()
+                self.connected_ms_tick = time.ticks_ms()
+                self.ip = status[0]
+                gc.collect()
+                return {"ssid": self.ssid, "ip":self.ip, "mac": self.mac}
+            gc.collect()
+            return None
 
     #3
     def disconnect(self):
@@ -121,64 +101,65 @@ class Wifi:
         Disconnect from the current network
         """
         self.wlan.active(False)
-        print("Wifi is disconnected!")
+        self.connected = False
+        self.ssid = None
+        self.ip = None
+        print("Wifi: Wifi is disconnected!")
 
-    #4
+    def info(self):
+        return {"ssid": self.ssid, "ip":self.ip, "mac": self.mac, 
+               "connected": self.connected, 
+               "elapsed_ms": time.ticks_ms() - self.connected_ms_tick
+               }
+
+    
     def list_networks(self):
         """
         Lists all wifi networks in that can be detected by the pico board.
         """
         nets = self.wlan.scan()
-        for net in nets:
-            print(net)
+        return nets
+        
+    def ifconfig(self):
+        return self.wlan.ifconfig()
 
-    #5
-    def create_socket():
+
+    def server_socket(self):
         """
         Create and launch a sockets web server.
         Assumes that wifi is already connected.
         """
         addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+        
+        self.ssocket = socket.socket()
+        self.ssocket.bind(addr)
+        self.ssocket.listen(1)
+        print('Wifi: server listening on: ', addr)
+        gc.collect()
+        return self.ssocket
 
-        self.socket = socket.socket()
-        self.socket.bind(addr)
-        self.socket.listen(1)
-
-        print('listening on', addr)
-
+    def check_clients(self, response="", no_requests=1):
+        """
+        Funtion receives connection on open socket and dumps the
+        content to the connecting client.
+        """
         # Listen for connections
-        while True:
+        for req_id in range(no_requests):
             try:
-                cl, addr = s.accept()
-                print('client connected from', addr)
+                cl, addr = self.ssocket.accept()
+                print('Server socket: client connected from: ', addr)
                 request = cl.recv(1024)
                 print(request)
 
-                request = str(request)
-                led_on = request.find('/light/on')
-                led_off = request.find('/light/off')
-                print( 'led on = ' + str(led_on))
-                print( 'led off = ' + str(led_off))
-
-                if led_on == 6:
-                    print("led on")
-                    led.value(1)
-                    stateis = "LED is ON"
-
-                if led_off == 6:
-                    print("led off")
-                    led.value(0)
-                    stateis = "LED is OFF"
-
-                response = html % stateis
 
                 cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-                cl.send(response)
+                cl.send(self.std_response)
                 cl.close()
 
             except OSError as e:
                 cl.close()
-                print('connection closed')
+                print('Server socket: [ERROR] connection closed without due process.')
+            gc.collect()
 
     #6
     def post(self, url, data=None):
