@@ -46,5 +46,8 @@ class Sensor:
 
 		return self.struct
 
-	def periodic_sample(self):
+	def periodic_sample(self, period):
 		self.op_mode = "periodic"
+
+		self.timer = Timer(period=1000*config.tandh_sample_period_s, mode=Timer.PERIODIC, \
+		                     callback=tandh_callback)
