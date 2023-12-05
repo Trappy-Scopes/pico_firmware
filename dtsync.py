@@ -1,12 +1,12 @@
-import ntp
+import ntptime
 from logger import Logger as Log
 from machine import RTC
-
+from wifi import Wifi
 
 # Clock synchronisation ----------------------------------------------    T2   ||  Timer 0
 def dt_sync_callback(timer):
-    global wifi, rtc
-    if wifi.connected:
+    global rtc
+    if Wifi.connected:
         Log.write("dtsync", "Local time before synchronization：%s" %str(rtc.datetime()))
         ntptime.settime()
         now = list(rtc.datetime())

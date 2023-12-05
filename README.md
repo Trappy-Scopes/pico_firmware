@@ -26,3 +26,7 @@ This repo defines the common firmware present on all pico boards of Trappy-Scope
 The following fields must be present in the `secrets.py` file:
 	+ not_token
 	+ not_user_key
+
+```mermaid
+graph LR
+```

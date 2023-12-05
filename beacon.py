@@ -4,6 +4,33 @@ import time
 
 class Beacon:
 
+    smlog = [-1]
+    
+    @asm_pio(set_init=PIO.OUT_LOW)
+    def __off__():
+        set(pins, 0)
+
+    @asm_pio(set_init=PIO.OUT_LOW)
+    def __on__():
+        set(pins, 1)
+        
+    @asm_pio(set_init=PIO.OUT_LOW)
+    def __pulse__():
+        label("loop")
+        push()
+        mov(isr, y)
+        
+        set(pins, 1)
+        nop()     [31]
+        nop()     [31]
+        nop()     [31]
+        nop()     [31]
+        nop()     [31]
+        set(pins, 0)
+        
+        jmp(y_dec, "loop")
+
+    
     def __init__(self, pin_no):
         self.pin_no = pin_no
         self.pin = Pin(pin_no)
@@ -11,16 +38,14 @@ class Beacon:
         self.sm2 = None
         self.pin.value(False)
         
-        @asm_pio(set_init=PIO.OUT_LOW)
-        def led_off():
-            set(pins, 0)
-
-        @asm_pio(set_init=PIO.OUT_LOW)
-        def led_on():
-            set(pins, 1)
-
-        self.off_fn = StateMachine(1, led_off, freq=10000, set_base=self.pin)
-        self.on_fn = StateMachine(2, led_on, freq=10002, set_base=self.pin)
+        sm_id = Beacon.smlog[-1] + 1
+        self.off_fn = StateMachine(sm_id, Beacon.__off__, freq=5000, set_base=self.pin)
+        print(self.off_fn)
+        self.on_fn = StateMachine(sm_id+1, Beacon.__on__, freq=5001, set_base=self.pin)
+        print(self.on_fn)
+        Beacon.smlog.append(sm_id)
+        Beacon.smlog.append(sm_id+1)
+        
         
     def blink(self):
         self.off_fn.active(1)
@@ -33,3 +58,8 @@ class Beacon:
     def off(self):
         self.off_fn.active(1)
         self.on_fn.active(0)
+        
+    def pulse(self, no):
+        self.on_fn = StateMachine(1, Beacon.__pulse__, freq=10000, set_base=self.pin)
+        self.on_fn.put(hex(no))
+        
