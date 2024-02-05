@@ -16,6 +16,10 @@ class Sensor:
 		- op-mode
 
 	"""
+	roll = []
+	def add(sensorobj):
+        roll.append(sensorobj)
+    
 	def __init__(self, name, type_, fields):
 		self.struct = {}
 		self.name = name
