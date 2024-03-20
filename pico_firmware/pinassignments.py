@@ -37,4 +37,4 @@ if board.circuit_id == "2ch_peristat_kitroniks_vx_shield":
     ## https://resources.kitronik.co.uk/pdf/5331-compact-motor-driver-raspberry-pi-pico-datasheet.pdf
     fwdpin         = 2  ## Shield specific
     revpin         = 3  ## Shield specific
-    potentiometer  = 27 ## ADC0
+    potentiometer  = 26 ## ADC0
