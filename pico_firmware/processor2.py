@@ -1,9 +1,10 @@
-from dtsync import dt_sync_callback
-import urequests
-
 """
 Processor 2 standard operations
 """
+
+from dtsync import dt_sync_callback
+import urequests
+
 
 from machine import Pin
 import gc

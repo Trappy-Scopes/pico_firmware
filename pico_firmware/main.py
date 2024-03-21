@@ -1,10 +1,15 @@
 ## !!! Changes sync globally across all devices
 ## !!! Do not block the REPL for long
 
+"""
+Stand main executable for all standard pico devices.
+"""
+
+
 import os
 from machine import Pin, PWM
 from time import sleep
-import pinassignments as pins
+from pico_firmware.handshake import Handshake
 
 ## 0. Print welcome message
 print("Executing default main.py: pico_firmware/main.py")
@@ -17,14 +22,15 @@ if "boot.py" not in os.listdir("/"):
 
 if "webrepl_cfg.py" not in os.listdir("/"):
     with open("webrepl_cfg.py", "w") as f:
-        f.write("PASS = \'trappy_pico_cr2phd\'\n")
+        f.write("PASS = \'trappy_cr\'\n")
 
 if "board.py" not in os.listdir("/"):
     with open("board.py", "w") as f:
         f.write('name = \"picodev\" \ncircuit_id = \"idle_device_that_blinks\"')
-import board
-### -----------------------------------------------------
 
+### -----------------------------------------------------
+import board
+import pico_firmware.pinassignments as pins
 
 
 ### 2. processor-2 instruction execution-----------------
@@ -55,13 +61,13 @@ if "4ch_voltctrl_pwm_v1_proto" in board.circuit_id:
     if "cc" in board.circuit_id:
         # Common Cathode Mode
         print("main.py : Device initalised as : 4ch_voltctrl_pwm_v1_proto_cc")
-        import from peripherals.lights.cc_pwm_rgb_led import CcPwmRgbLed
+        from peripherals.lights.cc_pwm_rgb_led import CcPwmRgbLed
         lit = CcPwmRgbLed(pins.light["red_pin"], pins.light["green_pin"], \
                           pins.light["blue_pin"])
     else:
         # Common Anode Mode
         print("main.py : Device initalised as : 4ch_voltctrl_pwm_v1_proto_ca")
-        import from peripherals.lights.ca_pwm_rgb_led import CaPwmRgbLed
+        from peripherals.lights.ca_pwm_rgb_led import CaPwmRgbLed
         lit = CaPwmRgbLed(pins.light["red_pin"], pins.light["green_pin"], \
                           pins.light["blue_pin"])
     
