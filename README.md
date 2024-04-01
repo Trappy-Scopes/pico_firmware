@@ -9,12 +9,44 @@ This repo defines the common firmware present on all pico boards of Trappy-Scope
 2. Connection to the wifi and handling/posting of web requests.
 3. Common `Action`, `Averager`, and `Logger` classes.
 4. Common Hardware basics: `Buzzer` class.
-4. Common Sensor Data Sharing Framework
-5. Temperature and Humidity sensor control code. (Because he is ubiquitous)
-6. Wifi connection protocol and reconnection requests on Processor II.
-7. Notifications pushes on Core II requests.
-8. Synchronisation of Date and Time over the internet.
+5. Common Sensor Data Sharing Framework
+6. Temperature and Humidity sensor control code. (Because he is ubiquitous)
+7. Wifi connection protocol and reconnection requests on Processor II.
+8. Notifications pushes on Core II requests.
+9. Synchronisation of Date and Time over the internet.
 
+
+
+## Execution Schematics
+
+```mermaid
+graph LR
+	boot.py --> main.py --> main_special[[Specialised Main File Instructions]]
+						  main.py --default--> main[[picofirmware/main.py]]
+						  
+						  main -.Main-processor.-> board(Read board.py)  --> Create-objects --> FreeREPL((Free REPL))
+						  main -.Processor-2.->    Device-Tasks --> ContinuousPoll((Continuous Poll)) -.-> ContinuousPoll
+```
+
+
+
+## Processor-2 Device-Tasks
+
+```mermaid
+graph LR
+	Processor-2-Thread --> Garbage-Collection --> 
+```
+
+
+
+## Error-Percolation
+
+1. Blinking on-board LED (`0.5Hz`): Normal execution - device connected to the network.
+2. Lit on-board LED: Normal execution but device not connected to the network.
+3. Very fast blinking on-board LED (`~5Hz`): Fatal error.
+4. Blinking red beacon LED: Acquisition in progress.
+5. Lit red beacon LED: Device waiting for acquisition (thread is sleeping).
+6. Off red beacon LED: Device on standby - not acquiring any images.
 
 ## Date-Time Synchronisation
 

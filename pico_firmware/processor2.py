@@ -2,82 +2,100 @@
 Processor 2 standard operations
 """
 
-from dtsync import dt_sync_callback
+from pico_firmware.dtsync import DTSync
+import board
+from pico_firmware.logging import Logger
+
 import urequests
-
-
 from machine import Pin
 import gc
 import math
 import time
 import webrepl
+import board
 
 def processor2():
+    p2_init_time = time.ticks_ms()
+    log = Logger("processor2")
+    
+    ### Parameters
+    machine_auto_reset_hours = 24
     tick_duration_ms = 500
-    total_ms_ticks_in_a_day = 86,400,000
+    wifi_reconn_counter = 0
     
     ## Resource Setup
     onboardled = Pin('LED', mode=Pin.OUT)
     onboardled.on()
-    gc.enable()
     
-    processor_2_stop = False
-    global buzzer, wifi, rtc, device_status_str
+    global buzzer, Wifi, rtc, processor2_stop
+    processor2_stop = False
+    
     
     
     ## Establish Wifi connection
-    wifi_reconn_counter = 0
-    global wifi
-    import secrets
-    wifi.connect(secrets)
+    from pico_firmware.wifi import Wifi
+    import pico_firmware.secrets as secrets
+    if board.flag_wifi_connect:
+        Wifi.connect(secrets)
+        if Wifi.connected:
+            print(wifi.info())
+            DTSync.sync(True)
+            webrepl.start()
+            
     
-    if wifi.connected:
-        print(wifi.info())
-        dt_sync_callback(True)
-        webrepl.start()
-    ########
-    
+    ######## ----------- Device Poll -----------------------
     while not processor2_stop:
+        
+        ## 0. Start time-keeping
         start_time = time.ticks_ms()
         
-        # LED Blink Counter
-        if not wifi.connected:
-            onboardled.on()
-        else:
-            onboardled.toggle()
         
-        ### Attempt LED Reconnection
-        if not wifi.connected:
-            wifi_reconn_counter = wifi_reconn_counter + 1
-            print(f"Wifi Reconnection counter: {counter}.")
-            wifi.connect(secrets)
-            
-            if wifi.connected:
-                Log.write("out", f"On Processor 2, wifi connected: {wifi.info()}.")
-                dt_sync_callback(True)
-                webrepl.start()
+        
+        # 1. LED Blink ---------
+        if board.flag_wifi_connect:
+            if not Wifi.connected:
+                onboardled.on()
             else:
-                if wifi_reconn_counter == 5: # Reset Device - if counter exceeds 5.
-                    buzzer.blink()
-                    Log.write("out", "Unable to connect to Wifi. Auto-Reseting device.")
-                    machine.reset()
+                onboardled.toggle()
+            
+        ### 2. Attempt Wifi Reconnection
+        if board.flag_wifi_connect:
+            if not wifi.connected:
+                wifi_reconn_counter = wifi_reconn_counter + 1
+                print(f"Processor2: Wifi reconnection counter: {counter}.")
+                Wifi.connect(secrets)
+            
+                if Wifi.connected:
+                    log.info(f"Processor2, wifi connected: {Wifi.info()}.")
+                    webrepl.start()
+                    wifi_reconn_counter = 0
+                elif board.flag_wifi_reset:
+                    if wifi_reconn_counter == 5: # Reset Device - if counter exceeds 5.
+                        log.error("Processor2, Unable to connect to wifi. Auto-reseting device.")
+                        onboardled.on()
+                        sleep(2)
+                        machine.reset()
         
-        ### Date Time Synchronisation Callback
-        if dtsync_callback_flag == True:
+        ###3 Date Time Synchronisation Callback
+        if board.flag_dt_sync:
             try:
-                dt_sync_callback(True)
+                DTSync.sync(True)
+                DTSync.emit_checkpoint()
             except:
-              Log.write("out", f"On Processor 2, DTSync Failed.")  
+              log.error(f"Processor2, ntp request failed.") 
 
+        ###4 Machine autoresets
+        if board.flag_auto_machine_reset:
+            if time.ticks_ms() - p2_init_time > ( 3600000 * machine_auto_reset_hours):
+                log.info("Processor2, scheduled machine reset.")
+                onboardled.on()
+                sleep(2)
+                machine.reset()
         
-
-        ### Garbage Collection
+        
+              
+        ###5 Garbage Collection
         gc.collect()
-        ###
-        
-        
-        ### Process Requests
-        #TODO
         ###
         
         ### Appropriate Tick dealy

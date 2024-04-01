@@ -9,7 +9,7 @@ Stand main executable for all standard pico devices.
 import os
 from machine import Pin, PWM
 from time import sleep
-from pico_firmware.handshake import Handshake
+
 
 ## 0. Print welcome message
 print("Executing default main.py: pico_firmware/main.py")
@@ -17,24 +17,44 @@ print("Executing default main.py: pico_firmware/main.py")
 ### 1. Verify required files -----------------------------
 ### Construct boot and webrepl config
 if "boot.py" not in os.listdir("/"):
+    print("pico_firmware/main.py : Emitting: boot.py")
     with open("boot.py", "w") as f:
         f.write("import webrepl\nwebrepl.start()\n") 
 
 if "webrepl_cfg.py" not in os.listdir("/"):
+    print("pico_firmware/main.py : Emitting: webrepl_cfg.py")
     with open("webrepl_cfg.py", "w") as f:
         f.write("PASS = \'trappy_cr\'\n")
+        
+        
+board_str = \
+"""# TRAPPY-SCOPES: BOARD CONFIGURATION ###
+name = \"picodev\"
+circuit_id = \"idle_device_that_blinks\"
+flag_wifi_connect = True
+flag_wifi_autoreset = True
+flag_dt_sync = True
+deice_status_str = \"device_clueless\"
+"""
 
 if "board.py" not in os.listdir("/"):
+    print("pico_firmware/main.py: Emitting: board.py")
     with open("board.py", "w") as f:
-        f.write('name = \"picodev\" \ncircuit_id = \"idle_device_that_blinks\"')
+        f.write(board_str)
+        
+if "vault" not in os.listdir("/"):
+        print("pico_firmware/main.py: Emitting: vault directory.")
+        os.mkdir("vault")
+
 
 ### -----------------------------------------------------
 import board
 import pico_firmware.pinassignments as pins
-
+from pico_firmware.handshake import Handshake
 
 ### 2. processor-2 instruction execution-----------------
 import _thread
+#from pico_firmware.processor2 import processor2
 #processor2_thread = _thread.start_new_thread(processor2, ())      
 # -------------------------------------------------------        
 
@@ -47,7 +67,7 @@ import _thread
 
 # cid : 0
 if board.circuit_id == "idle_device_that_blinks":
-    print("main.py : Device initalised as : idle_device_that_blinks")
+    print("pico_firmware/main.py : Device initalised as : idle_device_that_blinks")
     led = Pin("LED", Pin.OUT)
     i = 0
     while i < 10:

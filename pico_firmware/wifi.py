@@ -2,19 +2,33 @@
 Wireless connection code.
 """
 
-
 import time
 import network
 from machine import Pin
-import secrets
 import ubinascii
 import urequests
 import gc
 
+import pico_firmware.secrets as secrets
+
 class Wifi:
-    def __init__(self):
-        pass
-    def connect(self, ssid, password):
+    def __init__(self, connect=True):
+        self.wlan = network.WLAN(network.STA_IF)
+        self.wlan.active(True)
+        self.connected = False
+        
+        # Device Info
+        self.mac = ubinascii.hexlify(self.wlan.config('mac'),':').decode()
+        self.time_on_connected = None
+        self.ip = None
+        self.ssid = None
+        
+        # Connect if secrets are passed.
+        if connect:
+            self.connect(secrets)
+
+
+    def connect(self, ssid=None, password=None):
         pass
     def disconnect(self):
         pass
@@ -24,8 +38,8 @@ class Wifi:
     
     def info(self):
         return {"ssid": self.ssid, "ip":self.ip, "mac": self.mac, 
-               "connected": self.connected, 
-               "elapsed_ms": time.ticks_ms() - self.connected_ms_tick
+                "connected": self.connected, 
+                "elapsed_ms": time.ticks_ms() - self.connected_ms_tick
                }
 
     def list_nets(self):
