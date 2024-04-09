@@ -115,15 +115,15 @@ if board.circuit_id == "4_6_clustcontrol_v1_proto":
     
 # cid : 3
 if board.circuit_id == "2ch_peristat_kitroniks_vx_shield":
-    
+    print("main.py : Device initalised as : 2ch_peristat_kitroniks_vx_shield")
     ## Motor object
-    from actuators.dcmotor import DCMotor
-    motor = DCMotor(pins.fwdpin, pins.revpin)
+    from pico_firmware.actuators.dcmotor import DCMotor
+    motor1 = DCMotor(pins.m1_fwdpin, pins.m1_revpin)
+    motor2 = DCMotor(pins.m2_fwdpin, pins.m2_revpin)
     ## TODO motor 2
-    motor.set_speed_controller(pin.potentiometer)
-    motor1 = motor
-    motor2 = None
-    motors = [motor1, motor2]
+    #motor.set_speed_controller(pin.potentiometer)
+    motor = motor1
+    motorset = [motor1, motor2]
 
    
 if board.circuit_id == "4ch_peristatpump_v1_proto":

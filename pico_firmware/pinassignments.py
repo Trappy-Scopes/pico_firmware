@@ -35,6 +35,8 @@ if board.circuit_id == "4_6_clustcontrol_v1_proto":
 if board.circuit_id == "2ch_peristat_kitroniks_vx_shield":
     ## Assignmnets for Kirktronics Pico Shield
     ## https://resources.kitronik.co.uk/pdf/5331-compact-motor-driver-raspberry-pi-pico-datasheet.pdf
-    fwdpin         = 2  ## Shield specific
-    revpin         = 3  ## Shield specific
+    m1_fwdpin         = 2  ## Shield specific
+    m1_revpin         = 3  ## Shield specific
+    m2_fwdpin         = 6  ## Shield specific
+    m2_revpin         = 7  ## Shield specific
     potentiometer  = 26 ## ADC0
