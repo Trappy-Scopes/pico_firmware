@@ -15,11 +15,14 @@ class Handshake:
     def hello():
         print(f"Hello I am {board.name}! - [{Handshake.uuid}]")
         
-    def obj_list():        
-        all_ = globals()
+    def obj_list(globals_=None):
+        if not globals_:
+            all_ = globals()
+        else:
+            all_ = globals_
         objects = [obj for obj in all_ \
-                   if  "class" in str(all_[obj])]
-        exclusion_list = ['__thonny_helper']
+                   if  "object" in str(all_[obj]) or "Pin" in str(all_[obj])]
+        exclusion_list = ['__thonny_helper', "Pin", "power"]
         for obj in exclusion_list:
             if obj in objects:
                 objects.remove(obj)
