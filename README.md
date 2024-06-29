@@ -15,8 +15,8 @@ Common Control Layer firmware for Raspberry Pi Pico W devices used with  trappy-
 pico_firmware <repository>
     +
     |- vault            # storage/checkpoints/logfiles
-‡♰ 	|- boot.py           
-♰ 	|- main.py          # Either specialised or calls pico_firmware/main.py
+‡♰  |- boot.py           
+♰   |- main.py          # Either specialised or calls pico_firmware/main.py
 §♰  |- board.py         # board_id and configuration
 §♰  |- webrepl_cfg.py   # Web-repl credentials
 ‡   |- pico_firmware    # ---------------  ↓ Common firmware ↓ --------------------
