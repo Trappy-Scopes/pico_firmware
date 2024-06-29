@@ -6,13 +6,15 @@ Common Control Layer firmware for Raspberry Pi Pico W devices used with  trappy-
 ## General structure and execution map
 
 ‡ : not `.gitignored`
+
 § : configuration files
+
 ♰ : automatically created by `pico_firmware/main.py` after first execution
 
 ```
 pico_firmware <repository>
-		+
-		|- vault            # storage/checkpoints/logfiles
+    +
+    |- vault            # storage/checkpoints/logfiles
 ‡♰ 	|- boot.py           
 ♰ 	|- main.py          # Either specialised or calls pico_firmware/main.py
 §♰  |- board.py         # board_id and configuration
@@ -88,6 +90,8 @@ flag_wifi_connect = True
 flag_wifi_autoreset = True
 flag_dt_sync = True
 ```
+
+
 
 
 
