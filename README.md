@@ -43,7 +43,7 @@ pico_firmware <repository>
     :   :   |- test.py
     :   |- processing
     :   :   |- averager.py
-    :		*
+    :   *
     *
 ```
 
