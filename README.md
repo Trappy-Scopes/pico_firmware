@@ -22,8 +22,8 @@ pico_firmware <repository>
 ‡   |- pico_firmware    # ---------------  ↓ Common firmware ↓ --------------------
     :   |- main.py     
     :   |- devices      # device specific files that 
- §	: 	|- secrets.py
- §	: 	|- pinassignments.py
+§   : 	|- secrets.py
+§   : 	|- pinassignments.py
     :   |- actuators
     :   |- sensors
     :   |- controllers
