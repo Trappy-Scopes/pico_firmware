@@ -90,11 +90,3 @@ flag_wifi_connect = True
 flag_wifi_autoreset = True
 flag_dt_sync = True
 ```
-
-
-
-
-
-```mermaid
-graph LR
-```
