@@ -22,23 +22,23 @@ class LCD_0inch96(framebuf.FrameBuffer):
     WHITE = 0xFFFF
     BLACK = 0x0000
     
-    def __init__(self):
+    def __init__(self, pin_dict):
     
         self.width = 160
         self.height = 80
         self.char_w =  int(self.width/20)
         self.char_h = self.char_w
         
-        self.cs = Pin(9,Pin.OUT)
-        self.rst = Pin(12,Pin.OUT)
+        self.cs = Pin(pin_dict["cs"],Pin.OUT)
+        self.rst = Pin(pin_dict["rst"],Pin.OUT)
 #       self.bl = Pin(13,Pin.OUT)
         self.cs(1)
         # pwm = PWM(Pin(13))#BL
         # pwm.freq(1000)        
         self.spi = SPI(1)
         self.spi = SPI(1,1000_000)
-        self.spi = SPI(1,10000_000,polarity=0, phase=0,sck=Pin(10),mosi=Pin(11),miso=None)
-        self.dc = Pin(8,Pin.OUT)
+        self.spi = SPI(1,10000_000,polarity=0, phase=0,sck=Pin(pin_dict["clk"]),mosi=Pin(pin_dict["din"]),miso=None)
+        self.dc = Pin(pin_dict["dc"],Pin.OUT)
         self.dc(1)
         self.buffer = bytearray(self.height * self.width * 2)
         super().__init__(self.buffer, self.width, self.height, framebuf.RGB565)
@@ -54,6 +54,11 @@ class LCD_0inch96(framebuf.FrameBuffer):
         self.rst(1)
         time.sleep(0.2) 
         
+    def update(self):
+        self.dc(0)
+        self.cs(0)
+        self.spi.write(self.buffer)
+
     def write_cmd(self, cmd):
         self.dc(0)
         self.cs(0)

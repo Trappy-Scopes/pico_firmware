@@ -75,42 +75,23 @@ if board.circuit_id == "idle_device_that_blinks":
         sleep(0.5)
         i = i + 1
 
-# cid : 1
-
-if "4ch_voltctrl_pwm_v1_proto" in board.circuit_id:
-    if "cc" in board.circuit_id:
-        # Common Cathode Mode
-        print("main.py : Device initalised as : 4ch_voltctrl_pwm_v1_proto_cc")
-        from peripherals.lights.cc_pwm_rgb_led import CcPwmRgbLed
-        lit = CcPwmRgbLed(pins.light["red_pin"], pins.light["green_pin"], \
-                          pins.light["blue_pin"])
-    else:
-        # Common Anode Mode
-        print("main.py : Device initalised as : 4ch_voltctrl_pwm_v1_proto_ca")
-        from peripherals.lights.ca_pwm_rgb_led import CaPwmRgbLed
-        lit = CaPwmRgbLed(pins.light["red_pin"], pins.light["green_pin"], \
-                          pins.light["blue_pin"])
-    
-    from beacon import Beacon
-    beacon = Beacon(pins.beacon)
-    
-    from sensors.tandhsensor import TandHSensor
-    tandh = TandHSensor(pins.sensors["tandh"], "dh11")
-    
-    #sensors.append(tandh)
 
 # cid : 2   
-if board.circuit_id == "4_6_clustcontrol_v1_proto":
+if board.circuit_id == "4_clustcontrol_v1_proto":
+    from pico_firmware.beacon import Beacon
+    global buzzer
+    buzzer = Beacon(pins.buzzer)
+    
+    from pico_firmware.controllers.rpicontroller import RPiController
     rpi1 = RPiController(pins.rpictrl[1]["RUN"], pins.rpictrl[1]["GLOBAL_EN"])
     rpi2 = RPiController(pins.rpictrl[2]["RUN"], pins.rpictrl[2]["GLOBAL_EN"])
     rpi3 = RPiController(pins.rpictrl[3]["RUN"], pins.rpictrl[3]["GLOBAL_EN"])
     rpi4 = RPiController(pins.rpictrl[4]["RUN"], pins.rpictrl[4]["GLOBAL_EN"])
-    rpis = {}
-    rpis[1] = rpi1; rpis[2] = rpi2; rpis[3] = rpi3; rpis[4] = rpi4
-    from beacon import Beacon
-    beacon = Beacon(pins.buzzer)
+    rpiset = {}
+    rpiset[1] = rpi1; rpiset[2] = rpi2; rpiset[3] = rpi3; rpiset[4] = rpi4
+    RPiController.buzzer = buzzer
     
-    from sensors.tandhsensor import TandHSensor
+    from pico_firmware.sensors.tandhsensor import TandHSensor
     tandh = TandHSensor(pins.sensors["tandh"], "dh11")
     
 # cid : 3
@@ -128,42 +109,22 @@ if board.circuit_id == "2ch_peristat_kitroniks_vx_shield":
    
 if board.circuit_id == "4ch_peristatpump_v1_proto":
     pass
+
+
+elif f"{board.circuit_id}.py" in os.listdir("pico_firmware/circuits"):
+    try:
+        execfile(f"pico_firmware/circuits/{board.circuit_id}.py")
+        print(f"main.py : Device initalised as : {board.circuit_id}")
+    except Exception as e:
+        print(f"main.py: Device init failed! ::: {board.circuit_id}")
+        print(e)
+
+else:
+    print(f"Undefined circuit! :: {board.circuit_id}")
+    
+
 #---------------------------------------------------------
 
 
 
-### ---- Test stuff
 
-#from processor2 import processor2
-#import secrets
-
-
-#from lights import LightSelector
-#from wifi import Wifi
-
-## Wifi
-#wifi = Wifi(secrets)
-#beacon = Beacon(14)
-
-## Start Processor 2 thread
-#processor2_thread = _thread.start_new_thread(processor2, ())
-
-
-## Light
-#lit = LightSelector(deviceid)
-
-
-## TandH
-#if tandh in deviceid:
-#	tandh = TandHSensor(pinassignments.sensors.tandh, "dh11")
-
-from pico_firmware.beacon import Beacon
-beacon = Beacon(14)
-beacon.blink()
-from machine import Pin
-power = Pin(17, mode=Pin.OUT)
-power.on()
-#beacon.pulse(15)
-beacon2 = Beacon(16)
-#beacon3 = Beacon(12)
-#beacon2.blink()

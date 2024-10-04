@@ -19,14 +19,14 @@ if board.circuit_id == "4ch_pwm_sc1":
     }
     
 # cid: 2
-if board.circuit_id == "4_6_clustcontrol_v1_proto":
+if board.circuit_id == "4_clustcontrol_v1_proto":
     rpictrl = {
                 1: {"RUN": 3 , "GLOBAL_EN": 2},
                 2: {"RUN": 5,  "GLOBAL_EN": 4},
                 3: {"RUN": 7, "GLOBAL_EN" : 6},
                 4: {"RUN": 9, "GLOBAL_EN" : 8}
         }
-    buzzer = 0 ## Unassigned
+    buzzer = 16 ## Unassigned
     sensors = {
         "tandh"  : 15
     }
