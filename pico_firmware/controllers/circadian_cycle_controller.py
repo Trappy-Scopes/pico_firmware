@@ -20,13 +20,14 @@ class CircadianScheduler:
     buzzer: used for auditary feedback on processes.
     """
     def __init__(self, lightmatrix, name=None, day_start=[8,0], night_start=[20,0],
-                 lightmap={"day" :[255, 255, 255], "night" :[0, 0, 0]}
-
+                 lightmap={"day" :[255, 255, 255], "night" :[0, 0, 0]},
+                    bomdia=None, bonnoite=None
 
                  ):
         
         self.name = name
-        self.lightmatrix = lightmatrix  ## Is a list now -> this means that multiple displays can be updated.
+        self.lightmatrix = lightmatrix
+        ## Is a list now -> this means that multiple displays can be updated.
         self.partitions = []
 
 
@@ -35,13 +36,21 @@ class CircadianScheduler:
         self.day_start   = day_start   # hh, mm
         self.night_start = night_start # hh, mm
         
-        
+        if not bomdia:
+            self.bomdia = lambda lightmatrix: lightmatrix.fill(self.lightmap["day"])
+        else:
+            self.bomdia = bomdia
+        if not bonnoite:
+            self.bonnoite = lambda lightmatrix: lightmatrix.fill(self.lightmap["night"])
+        else:
+            self.bonnoite = bonnoite
 
         self.rtc = RTC()
         self.timer = Timer()
         from pico_firmware.beacon import Beacon
         self.buzzer = Beacon.current
         
+        self.is_active = True
         self.phase_map = {"day": 0, "night": 1}
         
 
@@ -56,7 +65,7 @@ class CircadianScheduler:
         
         ### If we assume that the incubator divides the y
         self.time_based(self.day_start, self.night_start)
-      
+          
     
     def time_based(self, day_start, night_start, cycles=0):
         """
@@ -167,17 +176,23 @@ class CircadianScheduler:
     def __set_day__(self, now):    
         print("Bom Dia!")
         self.buzzer.pulse(5)
-        self.lightmatrix.fill(self.lightmap["day"])
+        
+        self.bomdia(self.lightmatrix)
+
+        self.lightmatrix.write()
         self.phase = "day"
         Log.write("out", f"Transitioning to day light conditions: {self.lightmap['day']}")
         self.last_day_callback = now
         self.remaining_cycles = float(self.remaining_cycles) - 0.5
-    
+        
     def __set_night__(self, now):
         #print("diff", self.__minute_diff__(now, self.last_night_callback))
         print("Boa Noite!")
         self.buzzer.pulse(5)
-        self.lightmatrix.fill(self.lightmap["night"])
+        
+        self.bonnoite(self.lightmatrix)
+        
+        self.lightmatrix.write()
         self.phase = "night"
         Log.write("out", f"Transitioning to night light conditions: {self.lightmap['night']}")
         self.last_night_callback = now
@@ -241,8 +256,7 @@ class CircadianScheduler:
         now = self.rtc.datetime()
         print("Scheduler Callback!")
         
-        print(self.__minute_diff__(now, self.day_start))
-        print(self.__minute_diff__(now, self.night_start))
+        print(self.__minute_diff__(now, self.day_start), self.__minute_diff__(now, self.night_start))
         
 
         
