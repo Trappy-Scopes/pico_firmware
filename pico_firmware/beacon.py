@@ -72,13 +72,13 @@ class Beacon:
 
     def devicestatus(self, status):
         if status ==  "standby":
-            self.on()
+            self.blink()
             return True
         elif status == "off":
             self.off()
             return True
         elif status == "busy":
-            self.blink()
+            self.on()
             return True
         else:
             return False

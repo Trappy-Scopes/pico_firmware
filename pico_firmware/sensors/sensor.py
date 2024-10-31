@@ -1,6 +1,8 @@
 # TODO: Implementation
 
-class Sensor:
+
+
+class SensorX:
 	"""
 	Defines the common communication protocol for any/all sensors.
 

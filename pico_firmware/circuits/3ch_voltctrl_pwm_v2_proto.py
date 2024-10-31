@@ -4,7 +4,7 @@
 
 ## Pin assignements
 pins = {"ch": {"red": 9, "green":10, "blue":12},
-		"tandh": {"sda":8, "scl":9},
+		"tandh": {"sda":6, "scl":7},
 		"beacon" : 14
 }
 
@@ -29,5 +29,12 @@ lit = MultiChController([red, green, blue])
 
 
 from pico_firmware.sensors.tandhsensor import TandHSensor
+from machine import Pin, SoftI2C
+from pico_firmware.sensors.tandh import ahtx0
+
+tandh_i2c = SoftI2C(scl=Pin(pins["tandh"]["scl"]), sda=Pin(pins["tandh"]["sda"]))
+tandh = ahtx0.AHT20(tandh_i2c)
+
+
 #tandh = TandHSensor(pins["tandh"], "dh11")
 status("busy")

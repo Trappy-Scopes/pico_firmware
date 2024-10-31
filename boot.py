@@ -20,6 +20,6 @@ if "main.py" not in os.listdir("/"):
 
 
 ### --- start webrepl ----
-import webrepl
-print("boot.py : Starting webrepl")
-webrepl.start()
+#import webrepl
+#print("boot.py : Starting webrepl")
+#webrepl.start()
