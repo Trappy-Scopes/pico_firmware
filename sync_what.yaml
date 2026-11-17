@@ -1,0 +1,39 @@
+# Read by trappyscopes' firmware-sync tool (core/installer/mpyfirmware.py)
+# to decide what actually gets mirrored onto a device's filesystem from this
+# repository -- kept here, in the firmware repo, not hardcoded in the
+# installer, so this repo can grow (new circuits, new dev/test tooling)
+# without needing a matching trappyscopes code change.
+#
+# include: subdirectories AND individual files (relative to this repo's
+# root) that get synced, each onto the same-named path under the device's
+# own root -- a directory goes through sync_files() (incremental), a file
+# through a direct copy. Everything else at the repo root (tests/, host/,
+# the _backup_* snapshots, README.md) is left alone. board.py and
+# webrepl_cfg.py are NOT included -- pico_firmware/main.py writes those
+# itself on first boot (see below); boot.py IS included since main.py only
+# writes it if it's entirely missing, so the repo's own copy is what
+# should actually reach the device, not whatever local default -- see
+# pico_firmware/main.py's board_str for the file it *does* still generate.
+include:
+  - pico_firmware
+  - boot.py
+
+# exclude: dropped from what's under each included directory above -- bare
+# names, not full paths (matches hive/processorgroups/micropython.py's
+# SerialMPDevice.sync_files(), which does a plain "in" check per directory/
+# file name encountered during the walk, not glob or full-path matching).
+#
+# "pico_firmware" here means the stale nested duplicate at
+# pico_firmware/pico_firmware/ -- an older, incomplete copy left over from
+# an earlier reorganisation, not the real firmware (which is what "include"
+# above already scoped the sync down to). This is unambiguous specifically
+# because the sync root is now pico_firmware/ itself: a directory also
+# named "pico_firmware" can only be the one nested inside it.
+exclude:
+  dirs:
+    - __pycache__
+    - pico_firmware
+    - _backup_20260823
+    - _backup_20260825
+  files:
+    - .DS_Store

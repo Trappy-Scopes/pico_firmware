@@ -35,7 +35,7 @@ motor4 = motorset[3]
 class CleaningPump:
 
 
-	def __init__(self, motor, speed, pump_duty = [5, 55]):
+	def __init__(self, motor, speed, pump_duty =  [5, 55]):
 		self.motor = motor
 		self.pump_duty = pump_duty
 

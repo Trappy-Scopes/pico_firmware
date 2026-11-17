@@ -1,5 +1,4 @@
 from machine import RTC, Timer
-import math
 from neopixel import NeoPixel
 
 from pico_firmware._logger import Logger as Log
@@ -19,9 +18,15 @@ class CircadianScheduler:
     lightmatrix: Neopixel Array to control
     buzzer: used for auditary feedback on processes.
     """
+    ## Set by the circuit file on a watchdog reset, shown in the 30 s status line.
+    boot_tag = ""
+
+    ## Set by the circuit file's heartbeat: filesystem headroom.
+    fs_tag = ""
+
     def __init__(self, lightmatrix, name=None, day_start=[8,0], night_start=[20,0],
                  lightmap={"day" :[255, 255, 255], "night" :[0, 0, 0]},
-                    bomdia=None, bonnoite=None
+                    bomdia=None, bonnoite=None, buzzer=None
 
                  ):
         
@@ -47,8 +52,12 @@ class CircadianScheduler:
 
         self.rtc = RTC()
         self.timer = Timer()
-        from pico_firmware.beacon import Beacon
-        self.buzzer = Beacon.current
+        ## Pass buzzer= explicitly; otherwise fall back to the old PIO Beacon.
+        if buzzer is not None:
+            self.buzzer = buzzer
+        else:
+            from pico_firmware.beacon import Beacon
+            self.buzzer = Beacon.current
         
         self.is_active = True
         self.phase_map = {"day": 0, "night": 1}
@@ -140,42 +149,14 @@ class CircadianScheduler:
 
             
 
-    def short_callback(self, timer):
-        
-        now = self.rtc.datetime()
-        print("Scheduler Callback!")
-        
-        print(self.__minute_diff__(now, self.day_start))
-        print(self.__minute_diff__(now, self.night_start))
-        
-
-        
-        # Is it day?
-        if math.fabs(self.__minute_diff__(now, self.day_start))*60 <= 30 and \
-           math.fabs(self.__minute_diff__(now, self.last_day_callback)) > 5 and \
-           self.is_active:
-            # Bom Dia!
-            self.__set_day__(now)
-        
-        
-        # Is it night?
-        if math.fabs(self.__minute_diff__(now, self.night_start))*60 <= 30 and \
-           math.fabs(self.__minute_diff__(now, self.last_night_callback)) > 5 and \
-           self.is_active:
-            # Bon Noite!
-            self.__set_night__(now)
-        
-        # Test for cycles
-        if self.remaining_cycles == 0:
-            self.is_active = False
-        
-            
-                
-            
     # ------------
     def __set_day__(self, now):    
         print("Bom Dia!")
-        self.buzzer.pulse(5)
+        if self.buzzer:
+            try:
+                self.buzzer.pulse(5)
+            except BaseException as e:
+                print("buzzer failed:", e)
         
         self.bomdia(self.lightmatrix)
 
@@ -188,7 +169,11 @@ class CircadianScheduler:
     def __set_night__(self, now):
         #print("diff", self.__minute_diff__(now, self.last_night_callback))
         print("Boa Noite!")
-        self.buzzer.pulse(5)
+        if self.buzzer:
+            try:
+                self.buzzer.pulse(5)
+            except BaseException as e:
+                print("buzzer failed:", e)
         
         self.bonnoite(self.lightmatrix)
         
@@ -198,14 +183,31 @@ class CircadianScheduler:
         self.last_night_callback = now
         self.remaining_cycles = float(self.remaining_cycles) - 0.5
         
-    def phase_detect(self, now):
-        print(self.__minute_diff__(now, self.day_start))
-        print(self.__minute_diff__(now, self.night_start))
-        if self.__minute_diff__(self.day_start, now) >= 0 and \
-           self.__minute_diff__(self.night_start, now) <= 0:
+    def desired_phase(self, now):
+        """The phase the wall clock implies right now.
+
+        Pure function of the time: no memory, no edges, no windows. This is
+        what makes the scheduler self-healing - a callback that arrives late,
+        or a board that reboots at 03:00, still computes the right answer.
+        """
+        mins = now[4] * 60 + now[5]
+        day = self.day_start[0] * 60 + self.day_start[1]
+        night = self.night_start[0] * 60 + self.night_start[1]
+
+        if day == night:
             return "day"
-        else:
+        if day < night:
+            ## Daylight window sits inside one calendar day.
+            if day <= mins < night:
+                return "day"
             return "night"
+        ## Daylight window wraps past midnight.
+        if mins >= day or mins < night:
+            return "day"
+        return "night"
+
+    def phase_detect(self, now):
+        return self.desired_phase(now)
             
      
     def __minute_diff__(self, t1, t2):
@@ -252,32 +254,28 @@ class CircadianScheduler:
             
 
     def short_callback(self, timer):
-        
-        now = self.rtc.datetime()
-        print("Scheduler Callback!")
-        
-        print(self.__minute_diff__(now, self.day_start), self.__minute_diff__(now, self.night_start))
-        
+        """Level-triggered: compare wanted phase to applied phase, correct.
 
-        
-        # Is it day?
-        if math.fabs(self.__minute_diff__(now, self.day_start))*60 <= 30 and \
-           math.fabs(self.__minute_diff__(now, self.last_day_callback)) > 5 and \
-           self.is_active:
-            # Bom Dia!
-            self.__set_day__(now)
-        
-        
-        # Is it night?
-        if math.fabs(self.__minute_diff__(now, self.night_start))*60 <= 30 and \
-           math.fabs(self.__minute_diff__(now, self.last_night_callback)) > 5 and \
-           self.is_active:
-            # Bon Noite!
-            self.__set_night__(now)
-        
-        # Test for cycles
-        if self.remaining_cycles == 0:
+        The previous version was edge-triggered - it only acted if a callback
+        happened to land in the single minute containing a transition. On
+        2026-08-26 the 20:00 tick was missed and the lights stayed on for
+        10h24m, until a chance reboot. Here a missed tick costs 30 seconds.
+        """
+        now = self.rtc.datetime()
+        print("to day: %d min | to night: %d min%s%s" % (
+            self.__minute_diff__(now, self.day_start),
+            self.__minute_diff__(now, self.night_start),
+            self.fs_tag, self.boot_tag))
+
+        if not self.is_active:
+            return
+
+        want = self.desired_phase(now)
+        if want != getattr(self, "phase", None):
+            if want == "day":
+                self.__set_day__(now)
+            else:
+                self.__set_night__(now)
+
+        if self.remaining_cycles <= 0:
             self.is_active = False
-        
-        
-          
