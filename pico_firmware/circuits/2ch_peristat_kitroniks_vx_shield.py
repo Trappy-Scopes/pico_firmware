@@ -5,7 +5,8 @@
 ##   pump3        -- DFRobot DFR0523, PPM on GP1, own 5-6 V supply
 ##
 ##   FAST  mode : continuous run at fast_speed (default 0.5). All pumps.
-##   PULSE mode : pump1/2 -- 5 s on / 55 s off, speed adjustable in 0.03 - 0.2.
+##   PULSE mode : pump1/2 -- 5 s on / 55 s off, starting at 0.083, adjustable in
+##                           0.03 - 0.2.
 ##                pump3   -- CONTINUOUS, 0.10 - 0.30, starting at 0.15. No duty
 ##                           cycle. A kick at the start breaks stiction; the
 ##                           running speed itself stays low.
@@ -48,6 +49,8 @@ SLOW_MAX   = 0.2           ## fastest the pulse mode may run
 PULSE_ON_S = 5             ## seconds running per cycle
 PULSE_PERIOD_S = 60        ## one pulse per minute -> 5 s on / 55 s off
 PULSE_OFF_S = PULSE_PERIOD_S - PULSE_ON_S
+SLOW_START = 0.083         ## perfusion pulse-mode speed on a fresh boot (31% of the band).
+                           ## A board with a saved pumpstate.txt restores its own speed instead.
 
 ## pump3 (DFR0523, aeration) does not pulse: its "slow mode" runs continuously.
 ##
@@ -96,6 +99,7 @@ pump1 = PeristalticPump(DCMotor(pins["m1"]["fwd"], pins["m1"]["rev"]),
 						fast_speed=FAST_SPEED,
 						slow_min=SLOW_MIN, slow_max=SLOW_MAX,
 						pulse_on_s=PULSE_ON_S, pulse_off_s=PULSE_OFF_S,
+						slow_speed=SLOW_START,
 						restore=_saved.get(1))
 
 pump2 = PeristalticPump(DCMotor(pins["m2"]["fwd"], pins["m2"]["rev"]),
@@ -103,6 +107,7 @@ pump2 = PeristalticPump(DCMotor(pins["m2"]["fwd"], pins["m2"]["rev"]),
 						fast_speed=FAST_SPEED,
 						slow_min=SLOW_MIN, slow_max=SLOW_MAX,
 						pulse_on_s=PULSE_ON_S, pulse_off_s=PULSE_OFF_S,
+						slow_speed=SLOW_START,
 						restore=_saved.get(2))
 
 ## pump3: DFRobot DFR0523, continuous slow mode instead of a duty cycle.
