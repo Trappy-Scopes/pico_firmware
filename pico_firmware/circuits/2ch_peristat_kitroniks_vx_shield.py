@@ -3,6 +3,7 @@
 ## Three peristaltic pumps driven by the Pimoroni RGB keypad through the host:
 ##   pump1, pump2 -- Kitronik Compact Motor Driver shield (GP2/3, GP6/7)
 ##   pump3        -- DFRobot DFR0523, PPM on GP1, own 5-6 V supply
+##   board.py `pump_reverse = (1, 2)` reverses pump1/pump2 on that board only.
 ##
 ##   FAST  mode : continuous run at fast_speed (default 0.5). All pumps.
 ##   PULSE mode : pump1/2 -- 5 s on / 55 s off, starting at 0.083, adjustable in
@@ -94,7 +95,26 @@ _saved = _read_state_file()
 ## nobody can drive a motor behind its pump's back and desync pump.state().
 ## They are still reachable for debugging as an attribute chain:
 ##     pump1.motor.fwd(0.9)      pump1.motor.release()
-pump1 = PeristalticPump(DCMotor(pins["m1"]["fwd"], pins["m1"]["rev"]),
+## Per-board direction. A board whose tubing runs the other way lists those
+## pumps in its own board.py -- e.g. `pump_reverse = (1, 2)` -- and their
+## forward/reverse pins are swapped here. board.py lives only on that board, so
+## other boards running this circuit are unaffected, and it survives reboots
+## (the pumps always drive "forward"; direction is not a runtime setting).
+try:
+	import board as _board
+	_reverse = tuple(getattr(_board, "pump_reverse", ()) or ())
+except ImportError:
+	_reverse = ()
+
+
+def _motor(n, key):
+	fwd, rev = pins[key]["fwd"], pins[key]["rev"]
+	if n in _reverse:
+		fwd, rev = rev, fwd
+	return DCMotor(fwd, rev)
+
+
+pump1 = PeristalticPump(_motor(1, "m1"),
 						name="pump1",
 						fast_speed=FAST_SPEED,
 						slow_min=SLOW_MIN, slow_max=SLOW_MAX,
@@ -102,7 +122,7 @@ pump1 = PeristalticPump(DCMotor(pins["m1"]["fwd"], pins["m1"]["rev"]),
 						slow_speed=SLOW_START,
 						restore=_saved.get(1))
 
-pump2 = PeristalticPump(DCMotor(pins["m2"]["fwd"], pins["m2"]["rev"]),
+pump2 = PeristalticPump(_motor(2, "m2"),
 						name="pump2",
 						fast_speed=FAST_SPEED,
 						slow_min=SLOW_MIN, slow_max=SLOW_MAX,
@@ -171,6 +191,8 @@ def motor(n):
 
 ## End -> Indicate end of circuit creation
 print("2ch_peristat_kitroniks_vx_shield : pump1, pump2, pump3, pumpset ready")
+if _reverse:
+	print("  reversed by board.py pump_reverse: {}".format(_reverse))
 print("  pump1/2 kitronik : fast {}  slow {}-{}  duty {}s/{}s".format(
 		FAST_SPEED, SLOW_MIN, SLOW_MAX, PULSE_ON_S, PULSE_OFF_S))
 print("  pump3   dfr0523  : fast {}  slow {}-{} continuous @ {} kick {}/{}ms".format(
