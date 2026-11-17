@@ -1,2 +1,4 @@
 *logs*
 *db*
+# WiFi credentials: never committed. Copy secrets.example.py to pico_firmware/secrets.py.
+pico_firmware/secrets.py
