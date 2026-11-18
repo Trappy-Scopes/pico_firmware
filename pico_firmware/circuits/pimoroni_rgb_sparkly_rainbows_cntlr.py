@@ -15,6 +15,7 @@
 #
 #   kp.state(1)          -> {'power': True, 'pulse': False, 'speed': 45}
 #   kp.state()           -> {1: {...}, 2: {...}, 3: {...}}
+#   kp.markers()         -> {'BLEACH': False, 'AERATION': True}
 #   kp.pumps() kp.speed(n) kp.is_power(n) kp.is_pulse(n) kp.count()
 #   kp.drain()           -> pending Command objects, queue cleared
 #   kp.lines()           -> ['PUMP 1 POWER ON', ...]  (use this over the REPL)
@@ -28,14 +29,20 @@
 # ---------------------------------------------------------------- pad layout
 #   pad 0  1  2  3        col0 = PUMP 1        row 0  POWER  toggle
 #   pad 4  5  6  7        col1 = PUMP 2        row 1  PULSE  toggle
-#   pad 8  9  A  B        col2 = unused (dark) row 2  SPEED + (auto-repeat)
+#   pad 8  9  A  B        col2 = markers       row 2  SPEED + (auto-repeat)
 #   pad C  D  E  F        col3 = PUMP 3        row 3  SPEED - (auto-repeat)
+#
+#   col2 holds MARKERS: toggles that move no pump, they only tell the host to
+#   log an event. pad 2 = BLEACH (red while on: bleach clean of the tubes),
+#   pad 6 = AERATION (blue while on: aeration of media/water). Dark when off;
+#   pads A and E stay dark. See MARKER_PADS.
 #
 # ---------------------------------------------------------------- wire format
 #   PUMP <n> POWER ON|OFF
 #   PUMP <n> PULSE ON|OFF
 #   PUMP <n> SPEED <pct>
 #   PUMP <n> LIMIT MIN|MAX        (UI feedback only, safe to ignore)
+#   EVENT <name> ON|OFF           (marker toggled; the host logs an event)
 
 import gc
 import time
@@ -60,6 +67,12 @@ GC_MS           = 5000        # periodic collect; see WHAT CHANGED note 3
 ROW_POWER, ROW_PULSE, ROW_UP, ROW_DOWN = 0, 1, 2, 3
 PUMP_COLUMNS = {0: 1, 1: 2, 3: 3}     # keypad column -> pump number
 STEADY_PULSE = (3,)                   # columns whose pulse LED does not blink
+
+## Marker pads: pad index -> (name, colour while on). Each press toggles the
+## marker and emits EVENT <name> ON|OFF; no pump is touched. Must sit in a column
+## that PUMP_COLUMNS leaves free.
+MARKER_PADS = {2: ("BLEACH", (255, 0, 0)),       # col2 row0: bleach clean of the tubes
+               6: ("AERATION", (0, 0, 255))}     # col2 row1: aeration of media/water
 
 OFF       = (0, 0, 0)
 GREEN     = (0, 255, 40)
@@ -189,15 +202,18 @@ class Command:
         return self._pump
 
     def verb(self):
-        """'POWER' | 'PULSE' | 'SPEED' | 'LIMIT'"""
+        """'POWER' | 'PULSE' | 'SPEED' | 'LIMIT' | 'EVENT'"""
         return self._verb
 
     def value(self):
-        """bool for POWER/PULSE, int for SPEED, str for LIMIT."""
+        """bool for POWER/PULSE/EVENT, int for SPEED, str for LIMIT.
+        For EVENT, pump() is the marker name."""
         return self._value
 
     def line(self):
         """Wire representation, one line, no trailing newline."""
+        if self._verb == "EVENT":
+            return "EVENT {} {}".format(self._pump, "ON" if self._value else "OFF")
         if self._verb in ("POWER", "PULSE"):
             v = "ON" if self._value else "OFF"
         else:
@@ -212,8 +228,11 @@ class Command:
 
 
 def parse(line):
-    """Wire line -> (pump, verb, value), or None. One parser, used everywhere."""
+    """Wire line -> (pump, verb, value), or None. One parser, used everywhere.
+    EVENT <name> ON|OFF -> (name, 'EVENT', bool)."""
     parts = str(line).strip().upper().split()
+    if len(parts) == 3 and parts[0] == "EVENT":
+        return (parts[1], "EVENT", parts[2] == "ON")
     if len(parts) != 4 or parts[0] != "PUMP":
         return None
     try:
@@ -251,6 +270,7 @@ class PumpKeypad:
         self._state = {}
         for _col, n in PUMP_COLUMNS.items():
             self._state[n] = {"power": False, "pulse": False, "speed": SPEED_INIT}
+        self._markers = dict((m[0], False) for m in MARKER_PADS.values())
 
         self._last_states = 0
         self._edge_time = [0] * 16
@@ -284,6 +304,10 @@ class PumpKeypad:
 
     def is_pulse(self, pump):
         return self._state[pump]["pulse"]
+
+    def markers(self):
+        """{name: on} for every marker pad. Copy."""
+        return dict(self._markers)
 
     def is_running(self, pump):
         s = self._state[pump]
@@ -386,6 +410,21 @@ class PumpKeypad:
             self._issue(pump, "SPEED", new)
         return s["speed"]
 
+    def set_marker(self, name, on, quiet=False):
+        """Set a marker; emits EVENT <name> ON|OFF unless quiet. None if unknown."""
+        name = str(name).upper()
+        if name not in self._markers:
+            return None
+        on = bool(on)
+        if self._markers[name] != on:
+            self._markers[name] = on
+            if not quiet:
+                self._issue(name, "EVENT", on)
+        return on
+
+    def toggle_marker(self, name):
+        return self.set_marker(name, not self._markers.get(str(name).upper(), False))
+
     def toggle_power(self, pump):
         return self.set_power(pump, not self._state[pump]["power"])
 
@@ -409,6 +448,8 @@ class PumpKeypad:
         if got is None:
             return None
         n, verb, val = got
+        if verb == "EVENT":
+            return None if self.set_marker(n, val, quiet=quiet) is None else n
         if n not in self._state:
             return None
         if verb == "POWER":
@@ -544,13 +585,20 @@ class PumpKeypad:
     def adopt(self, other):
         """Take over another PumpKeypad's state during a rebuild, so the LEDs
         never flash back to defaults in between."""
+        ok = True
         try:
             for n, st in other.state().items():
                 if n in self._state:
                     self._state[n] = dict(st)
-            return True
         except BaseException:
-            return False
+            ok = False
+        try:                               # a build from before the markers has none
+            for name, on in other.markers().items():
+                if name in self._markers:
+                    self._markers[name] = bool(on)
+        except BaseException:
+            pass
+        return ok
 
     def driver_name(self):
         return type(self._kp).__name__
@@ -571,6 +619,12 @@ class PumpKeypad:
         return cmd
 
     def _press(self, i, now, repeat=False):
+        marker = MARKER_PADS.get(i)
+        if marker is not None:
+            if not repeat:
+                self._flash_until[i] = time.ticks_add(now, FLASH_MS)
+                self.toggle_marker(marker[0])
+            return
         row, col = i // 4, i % 4
         n = PUMP_COLUMNS.get(col)
         if n is None:
@@ -635,9 +689,12 @@ class PumpKeypad:
         dirty = False
         for col in range(4):
             n = PUMP_COLUMNS.get(col)
-            if n is None:                  # the old decorative column
+            if n is None:                  # the marker column: on colour or dark
                 for r in range(4):
-                    dirty |= self._set(r * 4 + col, OFF, now)
+                    i = r * 4 + col
+                    m = MARKER_PADS.get(i)
+                    on = m is not None and self._markers[m[0]]
+                    dirty |= self._set(i, m[1] if on else OFF, now)
                 continue
 
             s = self._state[n]
